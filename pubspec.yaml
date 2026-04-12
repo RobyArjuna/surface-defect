@@ -39,7 +39,10 @@ dependencies:
   http_parser: ^4.1.2
   get: ^4.7.2
   get_storage: ^2.1.1
-
+  flutter_dotenv: ^5.2.1
+  flutter_onnxruntime: ^1.6.4
+  image: ^4.2.0
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -61,6 +64,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/models/mobilevit_xs_surface_defect.onnx
+    - assets/models/labels.txt
+    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:

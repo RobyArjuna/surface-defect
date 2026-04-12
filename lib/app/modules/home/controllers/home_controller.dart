@@ -1,19 +1,15 @@
-// lib/app/modules/home/home_controller.dart
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import 'package:http_parser/http_parser.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:surface_defect/app/modules/history/controllers/history_controller.dart';
-
-const String FLASK_API_URL = 'http://192.168.1.14:5000/predict';
+import 'package:surface_defect/app/services/onnx_classifier_service.dart';
 
 class HomeController extends GetxController {
   final ImagePicker _picker = ImagePicker();
   final box = GetStorage();
+  final OnnxClassifierService classifier = Get.find<OnnxClassifierService>();
 
   var image = Rx<File?>(null);
   var status = 'Belum ada foto dipilih'.obs;
@@ -47,51 +43,32 @@ class HomeController extends GetxController {
     }
 
     isLoading.value = true;
-    status.value = 'Mengirim & Menganalisis Gambar...';
+    status.value = 'Menganalisis gambar di device...';
     result.value = null;
 
     try {
-      var uri = Uri.parse(FLASK_API_URL);
-      var request = http.MultipartRequest('POST', uri)
-        ..files.add(
-          await http.MultipartFile.fromPath(
-            'image',
-            image.value!.path,
-            contentType: MediaType('image', 'jpeg'),
-          ),
-        );
+      final prediction = await classifier.predict(image.value!);
+      result.value = prediction;
+      status.value = 'Klasifikasi Selesai!';
 
-      var response = await request.send();
-      var responseBody = await response.stream.bytesToString();
+      try {
+        final newItem = {
+          'imagePath': image.value!.path,
+          'class': prediction['predicted_class'],
+          'confidence': prediction['confidence_percent'],
+          'top_predictions': prediction['top_predictions'],
+        };
 
-      if (response.statusCode == 200) {
-        var decodedJson = jsonDecode(responseBody);
-        result.value = decodedJson;
-        status.value = 'Klasifikasi Selesai!';
+        List<dynamic> historyList = box.read<List<dynamic>>('history') ?? [];
+        historyList.insert(0, newItem);
+        await box.write('history', historyList);
 
-        try {
-          final newItem = {
-            'imagePath': image.value!.path, // Simpan path gambar
-            'class': decodedJson['predicted_class'],
-            'confidence': decodedJson['confidence_percent'],
-          };
-
-          List<dynamic> historyList = box.read<List<dynamic>>('history') ?? [];
-
-          historyList.insert(0, newItem);
-          await box.write('history', historyList);
-
-          Get.find<HistoryController>().loadHistory();
-        } catch (e) {
-          print("Error saat menyimpan history: $e");
-        }
-      } else {
-        status.value =
-            'Error Server: ${response.statusCode}\nRespons: $responseBody';
+        Get.find<HistoryController>().loadHistory();
+      } catch (e) {
+        print("Error saat menyimpan history: $e");
       }
     } catch (e) {
-      status.value =
-          'Error Koneksi: $e\nPastikan server Flask berjalan & IP sudah benar.';
+      status.value = 'Error inferensi lokal: $e';
     } finally {
       isLoading.value = false;
     }

@@ -4,37 +4,57 @@ import 'package:image_picker/image_picker.dart';
 import 'package:surface_defect/app/modules/home/controllers/home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
+  const HomeView({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Deteksi Cacat Manufaktur'),
+        title: const Text('Deteksi Cacat Manufaktur'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Obx(
-              () => Column(
-                // Dibungkus Obx untuk update UI
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Obx(() {
+              final result = controller.result.value;
+              final isLoading = controller.isLoading.value;
+              final image = controller.image.value;
+              final status = controller.status.value;
+
+              final topPredictions =
+                  (result?['top_predictions'] as List<dynamic>?) ?? [];
+
+              final allProbabilities =
+                  (result?['all_probabilities'] as Map<String, dynamic>?) ?? {};
+
+              final sortedEntries = allProbabilities.entries.toList()
+                ..sort(
+                  (a, b) => (b.value as num).toDouble().compareTo(
+                    (a.value as num).toDouble(),
+                  ),
+                );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   Text(
                     'Preview Foto',
                     style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
-                  // Area Preview Foto
                   Container(
-                    width: 300,
+                    width: double.infinity,
                     height: 300,
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: controller.image.value == null
+                    child: image == null
                         ? Center(
                             child: Icon(
                               Icons.image,
@@ -43,92 +63,82 @@ class HomeView extends GetView<HomeController> {
                             ),
                           )
                         : ClipRRect(
-                            borderRadius: BorderRadius.circular(11.0),
-                            child: Image.file(
-                              controller.image.value!,
-                              fit: BoxFit.cover,
-                            ),
+                            borderRadius: BorderRadius.circular(11),
+                            child: Image.file(image, fit: BoxFit.cover),
                           ),
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                  // Tombol Upload
                   ElevatedButton.icon(
-                    icon: Icon(Icons.photo_library),
-                    label: Text('Upload Foto (Galeri)'),
-                    onPressed: controller.isLoading.value
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Upload Foto (Galeri)'),
+                    onPressed: isLoading
                         ? null
                         : () => controller.pickImage(ImageSource.gallery),
                     style: ElevatedButton.styleFrom(
-                      minimumSize: Size(double.infinity, 50),
+                      minimumSize: const Size(double.infinity, 50),
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-                  // Tombol Buka Kamera
                   ElevatedButton.icon(
-                    icon: Icon(Icons.camera_alt),
-                    label: Text('Buka Kamera'),
-                    onPressed: controller.isLoading.value
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Buka Kamera'),
+                    onPressed: isLoading
                         ? null
                         : () => controller.pickImage(ImageSource.camera),
                     style: ElevatedButton.styleFrom(
-                      minimumSize: Size(double.infinity, 50),
+                      minimumSize: const Size(double.infinity, 50),
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                  // Tombol Submit
                   ElevatedButton.icon(
-                    icon: Icon(Icons.cloud_upload),
-                    label: Text('Submit'),
-                    onPressed:
-                        (controller.image.value == null ||
-                            controller.isLoading.value)
+                    icon: const Icon(Icons.analytics),
+                    label: const Text('Submit'),
+                    onPressed: (image == null || isLoading)
                         ? null
                         : controller.submitImage,
                     style: ElevatedButton.styleFrom(
-                      minimumSize: Size(double.infinity, 50),
+                      minimumSize: const Size(double.infinity, 50),
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                  // Tampilan Status/Hasil
-                  if (controller.isLoading.value)
+                  if (isLoading)
                     Column(
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 15),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 15),
                         Text(
-                          controller.status.value,
-                          style: TextStyle(fontSize: 16),
+                          status,
+                          style: const TextStyle(fontSize: 16),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     )
                   else
                     Text(
-                      controller.status.value,
-                      style: TextStyle(
+                      status,
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                       textAlign: TextAlign.center,
                     ),
 
-                  // --- KARTU HASIL ---
-                  if (controller.result.value != null &&
-                      !controller.isLoading.value)
+                  if (result != null && !isLoading) ...[
+                    const SizedBox(height: 20),
                     Card(
                       elevation: 4,
-                      margin: EdgeInsets.only(top: 20),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -137,20 +147,22 @@ class HomeView extends GetView<HomeController> {
                               style: Theme.of(context).textTheme.titleLarge,
                               textAlign: TextAlign.center,
                             ),
-                            SizedBox(height: 15),
+                            const SizedBox(height: 16),
+
                             Text(
-                              controller.result.value!['predicted_class'],
-                              style: TextStyle(
+                              result['predicted_class']?.toString() ?? '-',
+                              style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.blue,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            SizedBox(height: 5),
+                            const SizedBox(height: 8),
+
                             Container(
-                              padding: EdgeInsets.symmetric(
-                                vertical: 8,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 10,
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
@@ -158,7 +170,7 @@ class HomeView extends GetView<HomeController> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                'Confidence: ${controller.result.value!['confidence_percent']}',
+                                'Confidence: ${result['confidence_percent'] ?? '-'}',
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Colors.green[900],
@@ -168,107 +180,189 @@ class HomeView extends GetView<HomeController> {
                               ),
                             ),
 
-                            // --- 👇 UI BEST PRACTICE (Sorting + Progress Bar) 👇 ---
-                            SizedBox(height: 20),
-                            Divider(),
-                            Text(
-                              'Analisis Detail:',
-                              style: Theme.of(context).textTheme.titleMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: 10),
+                            if (topPredictions.isNotEmpty) ...[
+                              const SizedBox(height: 24),
+                              const Divider(),
+                              Text(
+                                'Top 3 Kemungkinan',
+                                style: Theme.of(context).textTheme.titleMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
 
-                            Builder(
-                              builder: (context) {
-                                // 1. Ambil data map dari Controller
-                                var rawMap =
-                                    controller
-                                            .result
-                                            .value!['all_probabilities']
-                                        as Map<String, dynamic>;
+                              ...topPredictions.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final item =
+                                    entry.value as Map<String, dynamic>;
 
-                                // 2. Ubah ke List agar bisa di-SORTING (Besar -> Kecil)
-                                // Ini kunci agar hasil prediksi tertinggi ada di atas
-                                var sortedEntries = rawMap.entries.toList()
-                                  ..sort(
-                                    (a, b) => (b.value as double).compareTo(
-                                      a.value as double,
+                                final className =
+                                    item['class_name']?.toString() ?? '-';
+                                final confidencePercent =
+                                    item['confidence_percent']?.toString() ??
+                                    '-';
+                                final confidenceScore =
+                                    ((item['confidence_score'] as num?) ?? 0)
+                                        .toDouble();
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: index == 0
+                                        ? Colors.blue.withOpacity(0.08)
+                                        : Colors.grey.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: index == 0
+                                          ? Colors.blue.withOpacity(0.3)
+                                          : Colors.grey.withOpacity(0.3),
                                     ),
-                                  );
-
-                                return Column(
-                                  children: sortedEntries.map((entry) {
-                                    double value =
-                                        entry.value
-                                            as double; // Nilai 0.0 - 1.0 dari Python
-                                    double percent =
-                                        value * 100; // Ubah ke persen visual
-
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 6.0,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
                                         children: [
-                                          // Baris Label & Persentase Text
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                entry.key, // Nama Kelas
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: value > 0.5
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                                ),
+                                          CircleAvatar(
+                                            radius: 14,
+                                            backgroundColor: index == 0
+                                                ? Colors.blue
+                                                : Colors.grey,
+                                            child: Text(
+                                              '${index + 1}',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                              Text(
-                                                '${percent.toStringAsFixed(2)}%', // Format String di sini
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: value > 0.5
-                                                      ? Colors.blue
-                                                      : Colors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 4),
-
-                                          // Visualisasi Progress Bar (Butuh nilai 0.0 - 1.0)
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              4,
                                             ),
-                                            child: LinearProgressIndicator(
-                                              value:
-                                                  value, // Menggunakan raw value float dari backend!
-                                              backgroundColor: Colors.grey[200],
-                                              color: value > 0.5
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              className,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            confidencePercent,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: index == 0
                                                   ? Colors.blue
-                                                  : Colors.blue[200],
-                                              minHeight: 8,
+                                                  : Colors.black87,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  }).toList(),
+                                      const SizedBox(height: 8),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: LinearProgressIndicator(
+                                          value: confidenceScore,
+                                          minHeight: 8,
+                                          backgroundColor: Colors.grey[200],
+                                          color: index == 0
+                                              ? Colors.blue
+                                              : Colors.blue[300],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 );
-                              },
-                            ),
-                            // --- 👆 AKHIR BAGIAN BARU 👆 ---
+                              }),
+                            ],
+
+                            if (sortedEntries.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              const Divider(),
+                              Text(
+                                'Analisis Detail',
+                                style: Theme.of(context).textTheme.titleMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+
+                              ...sortedEntries.map((entry) {
+                                final value = (entry.value as num).toDouble();
+                                final percent = value * 100;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              entry.key,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight:
+                                                    value ==
+                                                        sortedEntries
+                                                            .first
+                                                            .value
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            '${percent.toStringAsFixed(2)}%',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color:
+                                                  value ==
+                                                      (sortedEntries.first.value
+                                                              as num)
+                                                          .toDouble()
+                                                  ? Colors.blue
+                                                  : Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: LinearProgressIndicator(
+                                          value: value,
+                                          backgroundColor: Colors.grey[200],
+                                          color:
+                                              value ==
+                                                  (sortedEntries.first.value
+                                                          as num)
+                                                      .toDouble()
+                                              ? Colors.blue
+                                              : Colors.blue[200],
+                                          minHeight: 8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
                           ],
                         ),
                       ),
                     ),
+                  ],
                 ],
-              ),
-            ),
+              );
+            }),
           ),
         ),
       ),
